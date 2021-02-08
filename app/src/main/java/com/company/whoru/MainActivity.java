@@ -4,10 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
-import android.Manifest;
 import android.app.AlertDialog;
 import android.app.KeyguardManager;
 import android.app.admin.DevicePolicyManager;
@@ -15,9 +12,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -42,29 +38,16 @@ public class MainActivity extends AppCompatActivity {
     private AlertDialog.Builder alertDialogBuilder = null;
     private AlertDialog alertDialog = null;
 
-    private final int CAMERA_PERMISSION_REQUEST = 1001;
-    private final int STORAGE_PERMISSION_REQUEST = 1002;
+    private PermissionSupport ps;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        myToolbar = (Toolbar)findViewById(R.id.toolbar);
-        setSupportActionBar(myToolbar);
+        this.initializeVariables();
 
-        mDPM = (DevicePolicyManager)getSystemService(Context.DEVICE_POLICY_SERVICE);
-        mReceiver = new ComponentName(this, ReceiverAdmin.class);
-
-        this.initializeView();
-        this.initDialog();
-
-        checkPermission();
-
-        keyguardManager = (KeyguardManager)getSystemService(Context.KEYGUARD_SERVICE);
-        if(!keyguardManager.isKeyguardSecure()) {
-            this.showDialog();
-        }
+        permissionsCheck();
     }
 
     @Override
@@ -88,11 +71,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    protected void initializeView() {
-        imageView = (ImageView)findViewById(R.id.imageView);
-        onOffSwitch = (Switch)findViewById(R.id.switch1);
-        topTextView = (TextView)findViewById(R.id.textView2);
-        bottomTextView = (TextView)findViewById(R.id.textView3);
+    protected void initializeVariables() {
+        //변수 초기화
+        ps = new PermissionSupport(this, this);
+
+        mDPM = (DevicePolicyManager)getSystemService(Context.DEVICE_POLICY_SERVICE);
+        mReceiver = new ComponentName(this, ReceiverAdmin.class);
+
+        keyguardManager = (KeyguardManager)getSystemService(Context.KEYGUARD_SERVICE);
+
+        //뷰 초기화
+        myToolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(myToolbar);
+        imageView = findViewById(R.id.imageView);
+        onOffSwitch = findViewById(R.id.switch1);
+        topTextView = findViewById(R.id.textView2);
+        bottomTextView = findViewById(R.id.textView3);
 
         onOffSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -113,53 +107,16 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-    }
 
-    protected void checkPermission() {
-        int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA);
-
-        if(permissionCheck != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "권한이 필요합니다", Toast.LENGTH_SHORT).show();
-
-            if(ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.CAMERA)) {
-                Toast.makeText(this, "카메라 권한이 필요합니다", Toast.LENGTH_SHORT).show();
-            } else {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION_REQUEST);
-            }
-        }
-
-        int permissionCheck2 = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        if(permissionCheck2 != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "권한이 필요합니다", Toast.LENGTH_SHORT).show();
-
-            if(ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                Toast.makeText(this, "파일 저장 권한이 필요합니다", Toast.LENGTH_SHORT).show();
-            } else {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, STORAGE_PERMISSION_REQUEST);
-            }
-        }
+        this.initDialog();
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        switch(requestCode) {
-            case CAMERA_PERMISSION_REQUEST: {
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "카메라 권한 허가되었습니다", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "카메라 권한 제한되었습니다", Toast.LENGTH_SHORT).show();
-                }
-                break;
-            }
+        ps.permissionsResult(requestCode, permissions, grantResults);
 
-            case STORAGE_PERMISSION_REQUEST: {
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "파일 저장 권한이 허가되었습니다", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "파일 저장 권한이 제한되었습니다", Toast.LENGTH_SHORT).show();
-                }
-                break;
-            }
+        if(!keyguardManager.isKeyguardSecure()) {
+            this.showDialog();
         }
     }
 
@@ -217,5 +174,21 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         return false;
+    }
+
+    private void permissionsCheck() {
+        if(Build.VERSION.SDK_INT >= 23) {
+            if(!ps.checkPermissions()) {
+                ps.requestPermissions();
+            } else {
+                if(!keyguardManager.isKeyguardSecure()) {
+                    this.showDialog();
+                }
+            }
+        } else {
+            if(!keyguardManager.isKeyguardSecure()) {
+                this.showDialog();
+            }
+        }
     }
 }
