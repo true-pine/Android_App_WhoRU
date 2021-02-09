@@ -1,5 +1,5 @@
 # WhoRU - 내 휴대폰의 잠금을 해제하려고 한 사람을 알 수 있는 어플
-
+![previewImage](https://github.com/true-pine/Android_App_When/blob/master/docs/preview.webp)
 ### 1. 개발배경  
 내 휴대폰의 잠금을 누군가 해제하려고 시도했을 때 누구인지 증거를 남길 수 없을까? 라는 생각으로 어플을 개발  
 ### 2. 주요기능  
